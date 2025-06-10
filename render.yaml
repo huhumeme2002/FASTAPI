@@ -1,0 +1,30 @@
+services:
+  # Database PostgreSQL
+  - type: pserv
+    name: license-db
+    env: postgres
+    postgres:
+      version: "14"
+    # Dữ liệu sẽ được giữ lại trong 90 ngày sau khi plan bị hủy/hết hạn
+    # Thay đổi thành 'remove' nếu bạn muốn xóa ngay lập tức
+    plan: free # Gói miễn phí có thể bị tạm ngưng nếu không hoạt động
+    
+  # Web Service cho FastAPI
+  - type: web
+    name: license-api
+    env: python
+    # Tự động build lại khi push code lên nhánh chính
+    autoDeploy: true
+    # Lệnh cài đặt dependencies
+    buildCommand: "pip install -r requirements.txt"
+    # Lệnh khởi động server
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: pserv
+          name: license-db
+          property: connectionString
+      - key: ADMIN_SECRET_KEY
+        # 'sync: false' nghĩa là Render sẽ không ghi đè giá trị này nếu bạn cập nhật nó trên dashboard
+        sync: false 
