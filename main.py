@@ -6,9 +6,14 @@ from sqlalchemy.orm import Session
 import crud, models, schemas
 from database import SessionLocal, engine, Base
 
-# Tạo tất cả các bảng trong database (chỉ chạy khi chưa có bảng)
-# Trong môi trường sản xuất, bạn có thể muốn dùng Alembic để quản lý migrations
+# --- XÓA VÀ TẠO LẠI BẢNG KHI KHỞI ĐỘNG (DÀNH CHO MÔI TRƯỜNG TEST) ---
+# CẢNH BÁO: Thao tác này sẽ xóa toàn bộ dữ liệu trong các bảng mỗi khi deploy.
+# Chỉ dùng để đảm bảo schema được cập nhật.
+print("Dropping and recreating tables...")
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
+print("Tables recreated successfully.")
+# --- KẾT THÚC KHỐI MÃ TEST ---
 
 app = FastAPI(
     title="License Key API",
