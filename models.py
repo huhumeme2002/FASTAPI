@@ -9,4 +9,6 @@ class LicenseKey(Base):
     expires_at = Column(DateTime, nullable=False)
     is_active = Column(Boolean, default=True)
     notes = Column(String, nullable=True)
+    activation_count = Column(Integer, default=0)
+    max_activations = Column(Integer, default=3)
     created_at = Column(DateTime, server_default=func.now()) 

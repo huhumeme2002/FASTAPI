@@ -15,8 +15,10 @@ class KeyValidateResponse(BaseModel):
 # --- Schemas cho việc tạo key ---
 
 class KeyCreateRequest(BaseModel):
-    days_valid: int = 30
     notes: str | None = None
+    days_valid: int | None = None
+    minutes_valid: int | None = None
+    max_activations: int = 3
 
 # Schema cơ sở cho LicenseKey, chứa các trường chung
 class LicenseKeyBase(BaseModel):
@@ -24,6 +26,8 @@ class LicenseKeyBase(BaseModel):
     expires_at: datetime
     is_active: bool
     notes: str | None = None
+    activation_count: int
+    max_activations: int
 
     class Config:
         # Giúp Pydantic tương thích với model của SQLAlchemy

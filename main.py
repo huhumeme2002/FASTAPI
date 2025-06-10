@@ -57,6 +57,14 @@ def validate_key(request: schemas.KeyValidateRequest, db: Session = Depends(get_
     if key_record.expires_at < datetime.utcnow():
         return {"isValid": False, "message": "Key bản quyền đã hết hạn."}
 
+    # Kiểm tra giới hạn kích hoạt
+    if key_record.activation_count >= key_record.max_activations:
+        return {"isValid": False, "message": f"Key đã đạt giới hạn kích hoạt tối đa ({key_record.max_activations} lần)."}
+
+    # Nếu tất cả kiểm tra đều qua, tăng số lần kích hoạt và trả về thành công
+    key_record.activation_count += 1
+    db.commit()
+
     return {"isValid": True, "expiresAt": key_record.expires_at}
 
 
