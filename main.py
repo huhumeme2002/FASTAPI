@@ -3,8 +3,8 @@ from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 
-from . import crud, models, schemas
-from .database import SessionLocal, engine, Base
+import crud, models, schemas
+from database import SessionLocal, engine, Base
 
 # Tạo tất cả các bảng trong database (chỉ chạy khi chưa có bảng)
 # Trong môi trường sản xuất, bạn có thể muốn dùng Alembic để quản lý migrations

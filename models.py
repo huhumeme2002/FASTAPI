@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
-from .database import Base
+from database import Base
 
 class LicenseKey(Base):
     __tablename__ = "license_keys"

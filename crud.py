@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 import secrets
 import string
 
-from . import models, schemas
+import models
+import schemas
 
 def get_key_by_string(db: Session, key_string: str):
     """
