@@ -1,3 +1,4 @@
+from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -8,8 +9,13 @@ class KeyValidateRequest(BaseModel):
 
 class KeyValidateResponse(BaseModel):
     isValid: bool
-    expiresAt: datetime | None = None
-    message: str | None = None
+    expiresAt: Optional[str] = None
+    message: Optional[str] = None
+    isExpired: Optional[bool] = None
+    maxActivations: Optional[int] = None
+    activationsUsed: Optional[int] = None
+    features: List[str] = ["basic"]
+    key: Optional[str] = None
 
 
 # --- Schemas cho việc tạo key ---
@@ -35,4 +41,13 @@ class LicenseKeyBase(BaseModel):
 
 # Schema để trả về khi tạo key thành công
 class LicenseKeyCreateResponse(LicenseKeyBase):
-    pass 
+    pass
+
+
+class LicenseActivationResponse(BaseModel):
+    success: bool
+    key: str
+    expiresAt: str
+    activationsUsed: int
+    maxActivations: int
+    features: List[str] = ["basic"] 
