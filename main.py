@@ -1,6 +1,6 @@
 import os
-from datetime import datetime
-from fastapi import FastAPI, Depends, HTTPException, status, Header
+from datetime import datetime, timedelta
+from fastapi import FastAPI, Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
 
 import crud, models, schemas
@@ -57,20 +57,87 @@ def validate_key(request: schemas.KeyValidateRequest, db: Session = Depends(get_
     key_record = crud.get_key_by_string(db, key_string=request.licenseKey)
 
     if not key_record or not key_record.is_active:
-        return {"isValid": False, "message": "Key bản quyền không tồn tại hoặc đã bị vô hiệu hóa."}
+        return {
+            "isValid": False, 
+            "message": "Key bản quyền không tồn tại hoặc đã bị vô hiệu hóa."
+        }
 
+    is_expired = key_record.expires_at < datetime.utcnow()
+    if is_expired:
+        return {
+            "isValid": False, 
+            "message": "Key bản quyền đã hết hạn.",
+            "isExpired": True
+        }
+
+    max_activations_reached = key_record.activation_count >= key_record.max_activations
+    if max_activations_reached:
+        return {
+            "isValid": False, 
+            "message": f"Key đã đạt giới hạn kích hoạt tối đa ({key_record.max_activations} lần).",
+            "maxActivationsReached": True
+        }
+
+    return {
+        "isValid": True,
+        "expiresAt": key_record.expires_at.isoformat(),
+        "key": key_record.key_string,
+        "features": ["basic"],
+        "maxActivations": key_record.max_activations,
+        "activationsUsed": key_record.activation_count
+    }
+
+
+@app.post("/api/activate", response_model=schemas.LicenseActivationResponse, tags=["License Activation"])
+def activate_license(request: Request, key_request: schemas.KeyValidateRequest, db: Session = Depends(get_db)):
+    """
+    Kích hoạt key cho một thiết bị cụ thể.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+    
+    key_record = crud.get_key_by_string(db, key_string=key_request.licenseKey)
+    
+    if not key_record or not key_record.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Key bản quyền không tồn tại hoặc đã bị vô hiệu hóa."
+        )
+    
     if key_record.expires_at < datetime.utcnow():
-        return {"isValid": False, "message": "Key bản quyền đã hết hạn."}
-
-    # Kiểm tra giới hạn kích hoạt
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Key bản quyền đã hết hạn."
+        )
+    
     if key_record.activation_count >= key_record.max_activations:
-        return {"isValid": False, "message": f"Key đã đạt giới hạn kích hoạt tối đa ({key_record.max_activations} lần)."}
-
-    # Nếu tất cả kiểm tra đều qua, tăng số lần kích hoạt và trả về thành công
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Key đã đạt giới hạn kích hoạt tối đa ({key_record.max_activations} lần)."
+        )
+    
+    # Tăng số lần kích hoạt
     key_record.activation_count += 1
+    
+    # Tạo bản ghi kích hoạt
+    db_activation = models.ActivationLog(
+        key_id=key_record.id,
+        ip_address=client_ip,
+        user_agent=user_agent
+    )
+    db.add(db_activation)
+    
     db.commit()
-
-    return {"isValid": True, "expiresAt": key_record.expires_at}
+    db.refresh(key_record)
+    
+    return {
+        "success": True,
+        "key": key_record.key_string,
+        "expiresAt": key_record.expires_at.isoformat(),
+        "activationsUsed": key_record.activation_count,
+        "maxActivations": key_record.max_activations,
+        "features": ["basic"]
+    }
 
 
 @app.post("/api/generate-key", response_model=schemas.LicenseKeyCreateResponse, tags=["Admin"], dependencies=[Depends(verify_admin)])
