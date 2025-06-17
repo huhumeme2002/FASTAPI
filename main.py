@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
 
@@ -62,7 +62,10 @@ def validate_key(request: schemas.KeyValidateRequest, db: Session = Depends(get_
             "message": "Key bản quyền không tồn tại hoặc đã bị vô hiệu hóa."
         }
 
-    is_expired = key_record.expires_at < datetime.utcnow()
+    # Sử dụng timezone Việt Nam để kiểm tra hết hạn
+    vietnam_tz = timezone(timedelta(hours=7))
+    current_time = datetime.now(vietnam_tz)
+    is_expired = key_record.expires_at.replace(tzinfo=vietnam_tz) < current_time
     if is_expired:
         return {
             "isValid": False, 
@@ -78,9 +81,13 @@ def validate_key(request: schemas.KeyValidateRequest, db: Session = Depends(get_
             "maxActivationsReached": True
         }
 
+    # Chuyển đổi thời gian sang timezone Việt Nam để hiển thị
+    vietnam_tz = timezone(timedelta(hours=7))
+    expires_at_vn = key_record.expires_at.replace(tzinfo=vietnam_tz)
+
     return {
         "isValid": True,
-        "expiresAt": key_record.expires_at.isoformat(),
+        "expiresAt": expires_at_vn.isoformat(),
         "key": key_record.key_string,
         "features": ["basic"],
         "maxActivations": key_record.max_activations,
@@ -104,7 +111,10 @@ def activate_license(request: Request, key_request: schemas.KeyValidateRequest, 
             detail="Key bản quyền không tồn tại hoặc đã bị vô hiệu hóa."
         )
     
-    if key_record.expires_at < datetime.utcnow():
+    # Sử dụng timezone Việt Nam để kiểm tra hết hạn
+    vietnam_tz = timezone(timedelta(hours=7))
+    current_time = datetime.now(vietnam_tz)
+    if key_record.expires_at.replace(tzinfo=vietnam_tz) < current_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Key bản quyền đã hết hạn."
@@ -130,10 +140,14 @@ def activate_license(request: Request, key_request: schemas.KeyValidateRequest, 
     db.commit()
     db.refresh(key_record)
     
+    # Chuyển đổi thời gian sang timezone Việt Nam để hiển thị
+    vietnam_tz = timezone(timedelta(hours=7))
+    expires_at_vn = key_record.expires_at.replace(tzinfo=vietnam_tz)
+
     return {
         "success": True,
         "key": key_record.key_string,
-        "expiresAt": key_record.expires_at.isoformat(),
+        "expiresAt": expires_at_vn.isoformat(),
         "activationsUsed": key_record.activation_count,
         "maxActivations": key_record.max_activations,
         "features": ["basic"]
