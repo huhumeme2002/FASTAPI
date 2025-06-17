@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 import string
 
@@ -32,13 +32,17 @@ def create_license_key(db: Session, key_data: schemas.KeyCreateRequest):
     """
     Tạo một record key mới trong database.
     """
+    # Sử dụng timezone Việt Nam (UTC+7)
+    vietnam_tz = timezone(timedelta(hours=7))
+    current_time = datetime.now(vietnam_tz)
+
     # Ưu tiên tạo key theo phút nếu được cung cấp
     if key_data.minutes_valid:
-        expires_at = datetime.utcnow() + timedelta(minutes=key_data.minutes_valid)
+        expires_at = current_time + timedelta(minutes=key_data.minutes_valid)
     # Nếu không, dùng ngày (mặc định là 30 ngày nếu không cung cấp cả hai)
     else:
         days = key_data.days_valid if key_data.days_valid is not None else 30
-        expires_at = datetime.utcnow() + timedelta(days=days)
+        expires_at = current_time + timedelta(days=days)
 
     # Tạo key string duy nhất
     new_key_string = generate_license_key()
